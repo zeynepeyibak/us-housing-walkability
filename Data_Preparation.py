@@ -14,6 +14,7 @@ house_prices = pd.read_csv('Data/raw/Zillow.csv')
 CPI = pd.read_csv('Data/raw/CPI.csv')
 walk_score = pd.read_csv('Data/raw/Walk.csv')
 demographics = pd.read_csv('Data/raw/Census.csv')
+commute = pd.read_csv('Data/raw/Commute.csv')
 
 ### Zillow data
 #Rename RegionName to zip
