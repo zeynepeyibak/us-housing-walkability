@@ -1,0 +1,84 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{placeins}
+\usepackage{ragged2e}
+\usepackage[onehalfspacing]{setspace}
+\parindent0.0em
+\geometry{left=3cm,right=3cm, top=4cm}
+
+
+\date{}
+
+\author{}
+
+\title{Final Project by Claudine and Zeynep}
+
+
+\begin{document}
+
+\maketitle
+
+We estimate house prices within a zip code based on walk/bike score and commute time to work while controlling for number of bedrooms.\\
+Data Sources: 
+\begin{itemize}
+    \item Zillow Data: House prices at zip level given the number of bedrooms. We use the Fred CPI to inflation adjust the prices. Zillow url sometimes changes. If the code doesn’t run because of this, then the only solution is to manually correct the url.
+    \item Walk Score: City level data. Webscraped from https://www.walkscore.com/cities-and-neighborhoods/states/. As the walkscore data is available only for the big cities, only about half of the zip codes were merged.
+    \item Census: Demographics and commute time at zip code level. As census data uses zcta instead of zip, there is a very small proportion of non-merged data.
+\end{itemize}
+
+Here are some plots of the data we use:\\
+
+\begin{figure}
+    \centering
+    \includegraphics[scale=0.3]{Plots/Prices.png}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[scale=0.5]{Plots/Expensive.png}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[scale=0.5]{Plots/Cheap.png}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[scale=0.5]{Plots/Walk_Bike.png}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[scale=0.5]{Plots/Walk_Price.png}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[scale=0.5]{Plots/Bike_Price.png}
+\end{figure}
+
+\newpage
+\pagebreak
+These are the results from the simple regressions of house prices on the number of bedrooms, the walk score and the bike score.\\
+
+\input{Tables/summary_1.tex}
+
+\newpage
+\pagebreak
+These are the results from the regressions with commuting time and house price growth as additional covariates:
+
+\input{Tables/summary_2.tex}
+
+\newpage
+\pagebreak
+These are the results from the regressions including city and time fixed effects:
+
+\input{Tables/summary_3.tex}
+
+
+\end{document}

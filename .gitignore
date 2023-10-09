@@ -2,7 +2,9 @@ Playground/
 *.csv
 *.png
 summary_*
-Output.*
+Output.aux
+Output.log
+Output.pdf
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
