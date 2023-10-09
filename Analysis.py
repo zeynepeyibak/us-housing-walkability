@@ -2,13 +2,14 @@
 import numpy as np
 import pandas as pd
 import statsmodels as sm
+import statsmodels.formula.api as smf
 from statsmodels.regression.linear_model import OLS
 from statsmodels.tools.tools import add_constant
 from statsmodels.iolib.summary2 import summary_col
-
+from linearmodels.panel import PanelOLS
 
 #load data
-data = pd.read_csv('../Data/clean/Sample.csv')
+data = pd.read_csv('Data/clean/Sample.csv')
 
 #drop unnecessary columns
 columns_to_drop = ['Unnamed: 0.1', 'Unnamed: 0', 'Unnamed: 0_x']
@@ -49,7 +50,7 @@ results3 = reg3.fit(cov_type='HC1')
 info_dict={'R-squared' : lambda x: "{:.2f}".format(x.rsquared),
            'No. observations' : lambda x: "{0:d}".format(int(x.nobs))}
 
-results_table_1 = summary_col(results=[results,results2, results3],
+results_table_1 = summary_col(results=[results1,results2, results3],
                             float_format='%0.2f',
                             stars = True,
                             model_names=['Model 1',
@@ -65,7 +66,7 @@ results_table_1.add_title('Simple OLS Regressions')
 
 
 
-with open('ols_summary_1.tex', 'w') as file_handle:
+with open('Tables/summary_1.tex', 'w') as file_handle:
     file_handle.write(results_table_1.as_latex())
 
 
@@ -81,7 +82,7 @@ reg6 = smf.ols('price ~ Bedroom + walk_score + bike_score + short_commute + long
 results6 = reg6.fit(cov_type='HC1') 
 
 #create table
-results_table_2 = summary_col(results=[results,results2, results3],
+results_table_2 = summary_col(results=[results4,results5, results6],
                             float_format='%0.2f',
                             stars = True,
                             model_names=['Model 4',
@@ -99,7 +100,7 @@ results_table_2 = summary_col(results=[results,results2, results3],
 results_table_2.add_title('Regressions Including Additional Covariates')
 
 
-with open('ols_summary_2.tex', 'w') as file_handle:
+with open('Tables/summary_2.tex', 'w') as file_handle:
     file_handle.write(results_table_2.as_latex())
 
 
@@ -112,8 +113,15 @@ for i in range(0,len(data.date)):
 data['Year'] = year
 
 #run FE regression
-exog_vars = ['Bedroom' + 'walk_score' + 'bike_score']
+data_index = data[['City', 'Year']]
+data_index = pd.MultiIndex.from_frame(data_index)
+data= data.set_index(data_index )
 
-model = PanelOLS(data.price, exog_vars, time_effects=True, other_effects=['City'])
+model = PanelOLS(data.price, data[['Bedroom', 'walk_score', 'bike_score']], entity_effects=True)
 
 results = model.fit(cov_type='clustered', cluster_entity=True)
+
+with open('Tables/summary_3.tex', 'w') as file_handle:
+    file_handle.write(results.summary.as_latex().replace("\\toprule", "").replace('\\bottomrule', '').replace('\\midrule', ''))
+
+
