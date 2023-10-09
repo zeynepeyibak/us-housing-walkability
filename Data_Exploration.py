@@ -56,10 +56,10 @@ for i in bedroom_counts:
     
     axes[i - 2].annotate(f"Note: Most listed zip code as of {current_date} is {biggest_zip} in the state {State_biggest_zip}, city {City_biggest_zip}", xy=(0.5, -0.2), xycoords="axes fraction", fontsize=9, ha="center")
 #save the plot
-plt.show()
+
 plt.savefig('Plots/Prices.png')
 
-
+plt.show()
 
 #Bar Plot of the cities that contain the zip codes with most expensive 2-bedroom houses
 two_bedroom_houses = Zillow[Zillow['Bedroom'] == 2]
@@ -80,6 +80,7 @@ plt.xticks(rotation=90)
 
 plt.savefig('Plots/Expensive.png')
 
+plt.show()
 
 
 #Bar Plot of the cities that contain the zip codes with cheapest 2-bedroom houses
@@ -99,9 +100,9 @@ plt.xlabel('Zip, City')
 plt.ylabel('House Prices (CPI adjusted prices 1982=100)')
 plt.xticks(rotation=90)
 
-plt.show()
 plt.savefig('Plots/Cheap.png')
 
+plt.show()
 
 ### Walk Index
 ################################
@@ -112,9 +113,9 @@ plt.ylabel('Bike Score')
 plt.xlabel('Walk Score')
 plt.title('Scatter Plot of Bike Score vs. Walk Score')
 
-plt.show()
 plt.savefig('Plots/Walk_Bike.png')
 
+plt.show()
 
 #Scatter Plot of House Prices and Walk Score
 plt.scatter(house_prices['Walk Score'], house_prices['2023-08-31'], alpha=0.5)
@@ -131,8 +132,9 @@ plt.title('Scatter Plot of Bike Score vs. House Prices')
 plt.xlabel('Bike Score')
 plt.ylabel('House Prices at the Date 2023-08-31')
 
-plt.show()
 plt.savefig('Plots/Bike_Price.png')
+
+plt.show()
 
 #Now create a subsample to do the analysis
 
@@ -144,4 +146,3 @@ columns_to_drop = house_prices.filter(regex=pattern)
 house_prices.drop(columns=columns_to_drop.columns, inplace=True)
 
 house_prices.to_csv('Data/clean/Sample.csv')
-

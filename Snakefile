@@ -1,6 +1,26 @@
+rule all:
+    input:
+        file = 'Output.pdf'
+
+
+NUM = ['1', '2', '3']
+
+rule print_output:
+    input:
+        expand('Tables/summary_{number}.tex', number=NUM)
+    output:
+        file = 'Output.pdf'
+    shell:
+        "pdflatex Output/Output.tex"
+
+
 rule analyze_data:
     input:
         file = 'Data/clean/Sample.csv'
+    output:
+        file = 'Tables/summary_{number}.tex'
+    shell:
+        'python Analysis.py'
 
 rule explore_data:
     input:
