@@ -1,7 +1,7 @@
 Playground/
-Data/
-Plots/
-Tables/
+*.csv
+*.png
+summary_*
 Output.*
 
 # Byte-compiled / optimized / DLL files
