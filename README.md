@@ -6,23 +6,23 @@ We estimate how walkability, bikeability and commute times relate to house price
 
 ## Data
 
-- Zillow Home Value Index by zip code and bedroom count (1–5)
-- CPI (CPIAUCSL) from FRED
-- Walk, bike and transit scores, scraped from walkscore.com for all 50 states
-- Census ACS 2021 (5-year): demographics (S2502) and commute times (B08303)
+- Zillow Home Value Index by zip code and bedroom count (1–5), converted to constant dollars with CPI-U (FRED, CPIAUCSL)
+- Walk, Bike and Transit Scores per city, scraped from walkscore.com and matched on city and state
+- Census ACS 2021 (5-year) at ZCTA level from the Census API: householder characteristics (S2502) and travel time to work (B08303)
 
 ## Pipeline (Snakemake)
 
 1. `Data_Download.py`: downloads and scrapes the raw data
-2. `Data_Preparation.py`: cleans the data and merges it into one zip-level panel
-3. `Data_Exploration.py`: descriptive plots and the analysis sample
-4. `Analysis.py`: OLS with robust standard errors, plus a city fixed-effects panel model with clustered standard errors
+2. `Data_Preparation.py`: cleans the data and merges it into one file at the zip code × bedroom level
+3. `Data_Exploration.py`: descriptive plots
+4. `Analysis.py`: log home value on Walk and Bike Scores, commute shares and neighbourhood characteristics, with bedroom and state fixed effects; standard errors clustered by city
 5. `Output/Output.tex`: compiles the tables and figures into a report
 
 ## Run
 
 ```
+pip install -r requirements.txt
 snakemake --cores 1
 ```
 
-The Zillow download URL changes from time to time. If the download fails, update the URL in `Data_Download.py`.
+The Zillow download URL changes from time to time. If the download fails, update it in `Data_Download.py`.
