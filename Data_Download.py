@@ -5,10 +5,13 @@ Sources
 - CPI for all urban consumers (CPIAUCSL) from FRED
 - Walk, transit and bike scores per city, scraped from walkscore.com
 - ACS 2021 5-year estimates at ZCTA level from the Census API:
-  S2502 (characteristics of occupied housing units) and B08303 (travel time to work)
+  S2502 (characteristics of occupied housing units) and B08303 (travel time to work).
+  The Census API requires a free key (https://api.census.gov/data/key_signup.html),
+  read from the environment variable CENSUS_API_KEY.
 
 Output: Data/raw/{Zillow,CPI,Walk,Census,Commute}.csv
 """
+import os
 from io import StringIO
 from pathlib import Path
 
@@ -76,21 +79,33 @@ def download_walkscore():
 
 def download_acs(table, variables):
     """Query one ACS table for all ZCTAs. The API returns a list of rows, header first."""
+    key = os.environ.get("CENSUS_API_KEY")
+    if not key:
+        raise SystemExit(
+            "Set CENSUS_API_KEY first. A free key is available at "
+            "https://api.census.gov/data/key_signup.html"
+        )
     params = {
         "get": ",".join(["NAME", *variables]),
         "for": "zip code tabulation area:*",
+        "key": key,
     }
-    rows = get(CENSUS_URL.format(table=table), params=params).json()
+    response = get(CENSUS_URL.format(table=table), params=params)
+    try:
+        rows = response.json()
+    except ValueError:
+        raise SystemExit(f"Census API did not return data: {response.text[:300]}")
     return pd.DataFrame(rows[1:], columns=rows[0])
 
 
 def main():
     RAW.mkdir(parents=True, exist_ok=True)
+    # Census first: it fails fast without a key, before the slower downloads
+    download_acs("/subject", list(DEMOGRAPHICS)).to_csv(RAW / "Census.csv", index=False)
+    download_acs("", COMMUTE).to_csv(RAW / "Commute.csv", index=False)
     download_zillow().to_csv(RAW / "Zillow.csv", index=False)
     download_cpi().to_csv(RAW / "CPI.csv", index=False)
     download_walkscore().to_csv(RAW / "Walk.csv", index=False)
-    download_acs("/subject", list(DEMOGRAPHICS)).to_csv(RAW / "Census.csv", index=False)
-    download_acs("", COMMUTE).to_csv(RAW / "Commute.csv", index=False)
 
 
 if __name__ == "__main__":

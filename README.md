@@ -20,8 +20,11 @@ We estimate how walkability, bikeability and commute times relate to house price
 
 ## Run
 
+The Census API needs a free key: request one at https://api.census.gov/data/key_signup.html.
+
 ```
 pip install -r requirements.txt
+export CENSUS_API_KEY=your_key
 snakemake --cores 1
 ```
 
