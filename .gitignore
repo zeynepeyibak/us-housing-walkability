@@ -1,5 +1,6 @@
 Playground/
 *.csv
+!Data/census/*.csv
 *.png
 summary_*
 Output.aux

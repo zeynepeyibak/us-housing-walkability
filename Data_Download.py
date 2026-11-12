@@ -6,8 +6,9 @@ Sources
 - Walk, transit and bike scores per city, scraped from walkscore.com
 - ACS 2021 5-year estimates at ZCTA level from the Census API:
   S2502 (characteristics of occupied housing units) and B08303 (travel time to work).
-  The Census API requires a free key (https://api.census.gov/data/key_signup.html),
-  read from the environment variable CENSUS_API_KEY.
+  The Census API requires a free key (https://api.census.gov/data/key_signup.html).
+  Without CENSUS_API_KEY set, the script uses the copies in Data/census, which were
+  downloaded from data.census.gov in October 2023 (the 2021 estimates do not change).
 
 Output: Data/raw/{Zillow,CPI,Walk,Census,Commute}.csv
 """
@@ -19,6 +20,7 @@ import pandas as pd
 import requests
 
 RAW = Path("Data/raw")
+CENSUS_COPY = Path("Data/census")
 
 # Zillow changes these URLs from time to time. If a download fails, copy the
 # current link from https://www.zillow.com/research/data/
@@ -79,12 +81,7 @@ def download_walkscore():
 
 def download_acs(table, variables):
     """Query one ACS table for all ZCTAs. The API returns a list of rows, header first."""
-    key = os.environ.get("CENSUS_API_KEY")
-    if not key:
-        raise SystemExit(
-            "Set CENSUS_API_KEY first. A free key is available at "
-            "https://api.census.gov/data/key_signup.html"
-        )
+    key = os.environ["CENSUS_API_KEY"]
     params = {
         "get": ",".join(["NAME", *variables]),
         "for": "zip code tabulation area:*",
@@ -100,9 +97,13 @@ def download_acs(table, variables):
 
 def main():
     RAW.mkdir(parents=True, exist_ok=True)
-    # Census first: it fails fast without a key, before the slower downloads
-    download_acs("/subject", list(DEMOGRAPHICS)).to_csv(RAW / "Census.csv", index=False)
-    download_acs("", COMMUTE).to_csv(RAW / "Commute.csv", index=False)
+    if os.environ.get("CENSUS_API_KEY"):
+        download_acs("/subject", list(DEMOGRAPHICS)).to_csv(RAW / "Census.csv", index=False)
+        download_acs("", COMMUTE).to_csv(RAW / "Commute.csv", index=False)
+    else:
+        print("CENSUS_API_KEY not set: using the ACS files in Data/census")
+        pd.read_csv(CENSUS_COPY / "S2502.csv", dtype=str).to_csv(RAW / "Census.csv", index=False)
+        pd.read_csv(CENSUS_COPY / "B08303.csv", dtype=str).to_csv(RAW / "Commute.csv", index=False)
     download_zillow().to_csv(RAW / "Zillow.csv", index=False)
     download_cpi().to_csv(RAW / "CPI.csv", index=False)
     download_walkscore().to_csv(RAW / "Walk.csv", index=False)

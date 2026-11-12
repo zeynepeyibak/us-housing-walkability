@@ -20,12 +20,11 @@ We estimate how walkability, bikeability and commute times relate to house price
 
 ## Run
 
-The Census API needs a free key: request one at https://api.census.gov/data/key_signup.html.
-
 ```
 pip install -r requirements.txt
-export CENSUS_API_KEY=your_key
 snakemake --cores 1
 ```
+
+The two ACS tables are included in `Data/census`. To download them from the Census API instead, set a free key first (https://api.census.gov/data/key_signup.html): `export CENSUS_API_KEY=your_key`.
 
 The Zillow download URL changes from time to time. If the download fails, update it in `Data_Download.py`.
