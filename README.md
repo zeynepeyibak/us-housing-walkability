@@ -32,7 +32,7 @@ Homes in more walkable cities are worth more, also when comparing cities within 
 
 ![Walk Score and home values](Plots/Walk_Price.png)
 
-![Home values over time](Plots/Prices.png)
+![Bike Score and home values](Plots/Bike_Price.png)
 
 Full tables are in the report (`Output.pdf`, built by the pipeline).
 
