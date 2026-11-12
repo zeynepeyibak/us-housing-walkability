@@ -18,6 +18,24 @@ We estimate how walkability, bikeability and commute times relate to house price
 4. `Analysis.py`: log home value on Walk and Bike Scores, commute shares and neighbourhood characteristics, with bedroom and state fixed effects; standard errors clustered by city
 5. `Output/Output.tex`: compiles the tables and figures into a report
 
+## Results
+
+One observation per zip code and number of bedrooms, September 2026 (26,022 observations in 2,174 cities with a Walk Score). Dependent variable: log home value. Standard errors clustered by city.
+
+| | Walk Score coefficient | 10 more points ≈ |
+|---|---|---|
+| Bedroom fixed effects only | 0.0135 (0.0019) | +14.5% |
+| + state fixed effects | 0.0046 (0.0018) | +4.7% |
+| + state FE, commute times, education and age of householders | 0.0074 (0.0010) | +7.7% |
+
+Homes in more walkable cities are worth more, also when comparing cities within the same state with similar commute times and residents. About two thirds of the raw gap is explained by state and neighbourhood composition. Share of householders with a bachelor's degree is the strongest single predictor. These are associations, not causal effects: Walk Score is measured at the city level and is correlated with other city amenities.
+
+![Walk Score and home values](Plots/Walk_Price.png)
+
+![Home values over time](Plots/Prices.png)
+
+Full tables are in the report (`Output.pdf`, built by the pipeline).
+
 ## Run
 
 ```
