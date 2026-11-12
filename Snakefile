@@ -1,3 +1,8 @@
+import sys
+
+# Run the scripts with the same Python that runs Snakemake (macOS has python3 but no python)
+PYTHON = sys.executable
+
 RAW = ["Zillow", "CPI", "Walk", "Census", "Commute"]
 PLOTS = ["Prices", "Expensive", "Cheap", "Walk_Bike", "Walk_Price", "Bike_Price"]
 TABLES = ["summary_1", "summary_2", "summary_3"]
@@ -14,7 +19,7 @@ rule download_data:
     output:
         expand("Data/raw/{dataset}.csv", dataset=RAW)
     shell:
-        "python Data_Download.py"
+        PYTHON + " Data_Download.py"
 
 
 rule prepare_data:
@@ -24,7 +29,7 @@ rule prepare_data:
     output:
         "Data/clean/Data.csv"
     shell:
-        "python Data_Preparation.py"
+        PYTHON + " Data_Preparation.py"
 
 
 rule explore_data:
@@ -34,7 +39,7 @@ rule explore_data:
     output:
         expand("Plots/{plot}.png", plot=PLOTS)
     shell:
-        "python Data_Exploration.py"
+        PYTHON + " Data_Exploration.py"
 
 
 rule analyze_data:
@@ -44,7 +49,7 @@ rule analyze_data:
     output:
         expand("Tables/{table}.tex", table=TABLES)
     shell:
-        "python Analysis.py"
+        PYTHON + " Analysis.py"
 
 
 rule report:
