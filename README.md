@@ -4,6 +4,8 @@ Joint project by Claudine Schwarzenbach and Zeynep Eyibak (2023).
 
 We estimate how walkability, bikeability and commute times relate to house prices at the zip-code level in the US, controlling for the number of bedrooms.
 
+The walkability data comes from a **web scraper we built for walkscore.com**: it collects the Walk, Bike and Transit Scores of every city listed for all 50 US states. We link these scores to Zillow house prices and Census data that the pipeline downloads through public files and the Census API.
+
 ## Data collection
 
 The pipeline collects all data online from four sources (`Data_Download.py`), so the analysis can be rerun from scratch:
@@ -14,6 +16,18 @@ The pipeline collects all data online from four sources (`Data_Download.py`), so
 | Zillow Research | Home Value Index by zip code, one file per bedroom count (1–5) | Download of the public CSV files |
 | FRED | Consumer price index (CPI-U, CPIAUCSL), to convert prices to constant dollars | Download of the CSV series |
 | U.S. Census Bureau | ACS 2021 (5-year) at zip code (ZCTA) level: householder characteristics (S2502) and travel time to work (B08303) | Census API (copies of both tables are in `Data/census` for running without an API key) |
+
+### Web scraping: walkscore.com
+
+`download_walkscore()` in `Data_Download.py`:
+
+1. Loops over all 50 states and requests each state's page on walkscore.com (`https://www.walkscore.com/{state}`) with `requests`, sending a browser user agent.
+2. Parses every HTML table on the page with `pandas.read_html` and keeps the city tables, identified by their `City` and `Walk Score` columns.
+3. Adds the state to each city row and stacks the 50 states into one table of Walk, Bike and Transit Scores (`Data/raw/Walk.csv`).
+
+Because city names repeat across states, the scraped scores are merged to the house price data on city and state, not on city alone.
+
+### Merging
 
 `Data_Preparation.py` then merges the sources into one file at the zip code × bedroom level: Walk Scores on city and state (city names alone are not unique), and the Census data on the 5-digit zip code.
 
