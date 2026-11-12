@@ -5,3 +5,4 @@ statsmodels
 requests
 lxml
 snakemake
+pulp<2.8  # snakemake 7 calls pulp.list_solvers, removed in pulp 2.8
