@@ -4,11 +4,18 @@ Joint project by Claudine Schwarzenbach and Zeynep Eyibak (2023).
 
 We estimate how walkability, bikeability and commute times relate to house prices at the zip-code level in the US, controlling for the number of bedrooms.
 
-## Data
+## Data collection
 
-- Zillow Home Value Index by zip code and bedroom count (1–5), converted to constant dollars with CPI-U (FRED, CPIAUCSL)
-- Walk, Bike and Transit Scores per city, scraped from walkscore.com and matched on city and state
-- Census ACS 2021 (5-year) at ZCTA level from the Census API: householder characteristics (S2502) and travel time to work (B08303)
+The pipeline collects all data online from four sources (`Data_Download.py`), so the analysis can be rerun from scratch:
+
+| Source | What | How it is collected |
+|---|---|---|
+| walkscore.com | Walk, Bike and Transit Scores per city | **Web scraping:** the script requests the page of each of the 50 states and parses the city tables from the HTML |
+| Zillow Research | Home Value Index by zip code, one file per bedroom count (1–5) | Download of the public CSV files |
+| FRED | Consumer price index (CPI-U, CPIAUCSL), to convert prices to constant dollars | Download of the CSV series |
+| U.S. Census Bureau | ACS 2021 (5-year) at zip code (ZCTA) level: householder characteristics (S2502) and travel time to work (B08303) | Census API (copies of both tables are in `Data/census` for running without an API key) |
+
+`Data_Preparation.py` then merges the sources into one file at the zip code × bedroom level: Walk Scores on city and state (city names alone are not unique), and the Census data on the 5-digit zip code.
 
 ## Pipeline (Snakemake)
 
