@@ -28,7 +28,7 @@ One observation per zip code and number of bedrooms, September 2026 (26,022 obse
 | + state fixed effects | 0.0046 (0.0018) | +4.7% |
 | + state FE, commute times, education and age of householders | 0.0074 (0.0010) | +7.7% |
 
-Homes in more walkable cities are worth more, also when comparing cities within the same state with similar commute times and residents. About two thirds of the raw gap is explained by state and neighbourhood composition. Share of householders with a bachelor's degree is the strongest single predictor. These are associations, not causal effects: Walk Score is measured at the city level and is correlated with other city amenities.
+Homes in more walkable cities are worth more, also when comparing cities within the same state with similar commute times and residents. Comparing within states alone removes about two thirds of the raw gap. These are associations, not causal effects: Walk Score is measured at the city level and is correlated with other city amenities.
 
 ![Walk Score and home values](Plots/Walk_Price.png)
 
