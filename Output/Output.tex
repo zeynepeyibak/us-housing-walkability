@@ -13,70 +13,68 @@
 
 \date{}
 
-\author{}
+\author{Claudine Schwarzenbach and Zeynep Eyibak}
 
-\title{Final Project by Claudine and Zeynep}
+\title{House Prices and Walkability in the US}
 
 
 \begin{document}
 
 \maketitle
 
-We estimate house prices within a zip code based on walk/bike score and commute time to work while controlling for number of bedrooms.\\
-Data Sources: 
+We estimate how home values in a zip code relate to the Walk Score and Bike Score of its city and to commute times, controlling for the number of bedrooms.\\
+Data sources:
 \begin{itemize}
-    \item Zillow Data: House prices at zip level given the number of bedrooms. We use the Fred CPI to inflation adjust the prices. Zillow url sometimes changes. If the code doesn’t run because of this, then the only solution is to manually correct the url.
-    \item Walk Score: City level data. Webscraped from https://www.walkscore.com/cities-and-neighborhoods/states/. As the walkscore data is available only for the big cities, only about half of the zip codes were merged.
-    \item Census: Demographics and commute time at zip code level. As census data uses zcta instead of zip, there is a very small proportion of non-merged data.
+    \item Zillow: home values (ZHVI) at zip code level by number of bedrooms. We convert all values to dollars of the latest month in the data using the FRED CPI (CPIAUCSL). The Zillow URL changes from time to time; if the download fails, update it in \texttt{Data\_Download.py}.
+    \item Walk Score: city-level Walk, Transit and Bike Scores, scraped from walkscore.com and merged on city and state. Scores are available only for larger cities, so part of the zip codes remain unmatched.
+    \item Census (ACS 2021, 5-year): householder demographics (S2502) and travel time to work (B08303) at ZCTA level. ZCTAs approximate zip codes, so a small share of zip codes does not match.
 \end{itemize}
 
-Here are some plots of the data we use:\\
-
-\begin{figure}
+\begin{figure}[h]
     \centering
-    \includegraphics[scale=0.3]{Plots/Prices.png}
+    \includegraphics[width=0.8\textwidth]{Plots/Prices.png}
 \end{figure}
 
-\begin{figure}
+\begin{figure}[h]
     \centering
-    \includegraphics[scale=0.5]{Plots/Expensive.png}
+    \includegraphics[width=0.8\textwidth]{Plots/Expensive.png}
 \end{figure}
 
-\begin{figure}
+\begin{figure}[h]
     \centering
-    \includegraphics[scale=0.5]{Plots/Cheap.png}
+    \includegraphics[width=0.8\textwidth]{Plots/Cheap.png}
 \end{figure}
 
-\begin{figure}
+\FloatBarrier
+
+\begin{figure}[h]
     \centering
-    \includegraphics[scale=0.5]{Plots/Walk_Bike.png}
+    \includegraphics[width=0.6\textwidth]{Plots/Walk_Bike.png}
 \end{figure}
 
-\begin{figure}
+\begin{figure}[h]
     \centering
-    \includegraphics[scale=0.5]{Plots/Walk_Price.png}
+    \includegraphics[width=0.6\textwidth]{Plots/Walk_Price.png}
 \end{figure}
 
-\begin{figure}
+\begin{figure}[h]
     \centering
-    \includegraphics[scale=0.5]{Plots/Bike_Price.png}
+    \includegraphics[width=0.6\textwidth]{Plots/Bike_Price.png}
 \end{figure}
 
+\FloatBarrier
 \newpage
-\pagebreak
-These are the results from the simple regressions of house prices on the number of bedrooms, the walk score and the bike score.\\
+The regressions use one observation per zip code and number of bedrooms in the latest month of the data. The dependent variable is the log home value. All models include bedroom fixed effects. Walk and Bike Scores are measured at the city level, so standard errors are clustered by city.
 
 \input{Tables/summary_1.tex}
 
-\newpage
-\pagebreak
-These are the results from the regressions with commuting time and house price growth as additional covariates:
+\FloatBarrier
+Commute shares are the percentage of workers in the zip code with a commute under 15 minutes (short) and of 40 minutes or more (long); 15 to 39 minutes is the omitted category.
 
 \input{Tables/summary_2.tex}
 
-\newpage
-\pagebreak
-These are the results from the regressions including city and time fixed effects:
+\FloatBarrier
+State fixed effects restrict the comparison to cities within the same state.
 
 \input{Tables/summary_3.tex}
 

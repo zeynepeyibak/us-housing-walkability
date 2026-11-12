@@ -1,51 +1,58 @@
+RAW = ["Zillow", "CPI", "Walk", "Census", "Commute"]
+PLOTS = ["Prices", "Expensive", "Cheap", "Walk_Bike", "Walk_Price", "Bike_Price"]
+TABLES = ["summary_1", "summary_2", "summary_3"]
+
+
 rule all:
     input:
-        file = 'Output.pdf'
-
-
-NUM = ['1', '2', '3']
-
-rule print_output:
-    input:
-        expand('Tables/summary_{number}.tex', number=NUM)
-    output:
-        file = 'Output.pdf'
-    shell:
-        "pdflatex Output/Output.tex"
-
-
-rule analyze_data:
-    input:
-        file = 'Data/clean/Sample.csv'
-    output:
-        file = 'Tables/summary_{number}.tex'
-    shell:
-        'python Analysis.py'
-
-rule explore_data:
-    input:
-        file = 'Data/clean/Data.csv'
-    output:
-        file = 'Data/clean/Sample.csv'
-    shell:
-        'python Data_Exploration.py'
-
-
-DATA = ['Zillow', 'CPI', 'Walk', 'Census', 'Commute']
-
-rule prepare_data:
-    input:
-        expand('Data/raw/{dataset}.csv', dataset=DATA)
-    output:
-        file = 'Data/clean/Data.csv'
-    shell:
-        'python Data_Preparation.py'
+        "Output.pdf"
 
 
 rule download_data:
     input:
-        script = 'Data_Download.py'
+        "Data_Download.py"
     output:
-        file = 'Data/raw/{dataset}.csv'
+        expand("Data/raw/{dataset}.csv", dataset=RAW)
     shell:
-        'python {input.script}'
+        "python Data_Download.py"
+
+
+rule prepare_data:
+    input:
+        "Data_Preparation.py",
+        expand("Data/raw/{dataset}.csv", dataset=RAW)
+    output:
+        "Data/clean/Data.csv"
+    shell:
+        "python Data_Preparation.py"
+
+
+rule explore_data:
+    input:
+        "Data_Exploration.py",
+        "Data/clean/Data.csv"
+    output:
+        expand("Plots/{plot}.png", plot=PLOTS)
+    shell:
+        "python Data_Exploration.py"
+
+
+rule analyze_data:
+    input:
+        "Analysis.py",
+        "Data/clean/Data.csv"
+    output:
+        expand("Tables/{table}.tex", table=TABLES)
+    shell:
+        "python Analysis.py"
+
+
+rule report:
+    input:
+        "Output/Output.tex",
+        expand("Plots/{plot}.png", plot=PLOTS),
+        expand("Tables/{table}.tex", table=TABLES)
+    output:
+        "Output.pdf"
+    shell:
+        "pdflatex -interaction=nonstopmode Output/Output.tex"

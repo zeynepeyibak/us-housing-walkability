@@ -1,98 +1,97 @@
-#Import Packages
+"""Download the raw data.
+
+Sources
+- Zillow ZHVI by zip code and number of bedrooms (1-5)
+- CPI for all urban consumers (CPIAUCSL) from FRED
+- Walk, transit and bike scores per city, scraped from walkscore.com
+- ACS 2021 5-year estimates at ZCTA level from the Census API:
+  S2502 (characteristics of occupied housing units) and B08303 (travel time to work)
+
+Output: Data/raw/{Zillow,CPI,Walk,Census,Commute}.csv
+"""
+from io import StringIO
+from pathlib import Path
+
 import pandas as pd
 import requests
-import io
-from io import StringIO
-import zipfile
 
-# To get multiple outputs at once
-from IPython.core.interactiveshell import InteractiveShell
-InteractiveShell.ast_node_interactivity = "all"
+RAW = Path("Data/raw")
 
+# Zillow changes these URLs from time to time. If a download fails, copy the
+# current link from https://www.zillow.com/research/data/
+ZILLOW_URL = (
+    "https://files.zillowstatic.com/research/public_csvs/zhvi/"
+    "Zip_zhvi_bdrmcnt_{n}_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv"
+)
+FRED_URL = "https://fred.stlouisfed.org/graph/fredgraph.csv?id=CPIAUCSL"
+WALKSCORE_URL = "https://www.walkscore.com/{state}"
+CENSUS_URL = "https://api.census.gov/data/2021/acs/acs5{table}"
 
-### Zillow Data: Data is downloaded from here:https://www.zillow.com/research/data/ However, url to download the file changes often. If the url doesn't exist, update the path before running the
-
-# Create an empty list to store dataframes
-house_prices_list = []
-
-#download the data from Zillow website
-for number in range(1, 6):
-    url_zillow = f'https://files.zillowstatic.com/research/public_csvs/zhvi/Zip_zhvi_bdrmcnt_{number}_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv?t=1696158077'
-    response = requests.get(url_zillow)
-    data = pd.read_csv(StringIO(response.text))
-    #add a 'number of bedrooms' column 
-    data['Bedroom'] = number
-    
-    # Append the dataframe to the list
-    house_prices_list.append(data)
-
-# Concatenate the dataframes in the list
-house_prices = pd.concat(house_prices_list, ignore_index=True)
-# Save the data
-house_prices.to_csv('Data/raw/Zillow.csv')
-
-### CPI Data from FRED
-
-# Download CPI from fed
-url_CPI = "https://fred.stlouisfed.org/graph/fredgraph.csv?bgcolor=%23e1e9f0&chart_type=line&drp=0&fo=open%20sans&graph_bgcolor=%23ffffff&height=450&mode=fred&recession_bars=on&txtcolor=%23444444&ts=12&tts=12&width=1318&nt=0&thu=0&trc=0&show_legend=yes&show_axis_titles=yes&show_tooltip=yes&id=CPIAUCSL&scale=left&cosd=1947-01-01&coed=2023-08-01&line_color=%234572a7&link_values=false&line_style=solid&mark_type=none&mw=3&lw=2&ost=-99999&oet=99999&mma=0&fml=a&fq=Monthly&fam=avg&fgst=lin&fgsnd=2020-02-01&line_index=1&transformation=lin&vintage_date=2023-09-26&revision_date=2023-09-26&nd=1947-01-01"
-CPI = pd.read_csv(url_CPI)
-# Save the data
-CPI.to_csv('Data/raw/CPI.csv')
-
-### Walk/Transit/Bike Score: We scrape the data from walkscore.com
-
-state= [
-    "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY",
-    "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", 
-    "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"
+STATES = [
+    "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID", "IL",
+    "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT",
+    "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI",
+    "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY",
 ]
 
-#Initialize an empty data frame
-walk_score = []
-
-for st in state:
-    url = f"https://www.walkscore.com/{st}"
-    tables= pd.read_html(url)
-    walk_score += [pd.DataFrame(table) for table in tables]
-    for table in tables:
-        table['State'] = st
-
-walk_score = pd.concat(walk_score)
-
-# save data
-walk_score.to_csv('Data/raw/Walk.csv')
-
-### Census Data
-url_census_demog = "https://data.census.gov/api/access/table/download?download_id=0e22908ebd288452ea74e7450c2625aba74cace52e17cd1431542d638249e4f9"
-zip_file = "ACSST5Y2021.S2502_2023-10-02T031911.zip"
-
-response = requests.get(url_census_demog)
-
-with open(zip_file, "wb") as file:
-    file.write(response.content)
-csv_file_in_zip = "ACSST5Y2021.S2502-Data.csv"
-
-with zipfile.ZipFile(zip_file, "r") as zip_ref:
-    with zip_ref.open(csv_file_in_zip) as file_in_zip:
-        csv_data = file_in_zip.read()
-demographics = pd.read_csv(io.BytesIO(csv_data))
-# save the data
-demographics.to_csv('Data/raw/Census.csv')
-
-## Census commute data
-url_census_commute = "https://data.census.gov/api/access/table/download?download_id=278c69b8e17a5e52ae49ed6323c631452c762747b6ea30c1d39e6ab4e4681fe6"
-zip_file = "ACSDT5Y2021.B08303_2023-10-02T063015.zip"
-
-response = requests.get(url_census_commute)
+# ACS variables we keep (labels checked against api.census.gov, 2021 ACS5)
+DEMOGRAPHICS = {
+    "S2502_C02_003E": "pct_black",       # householder Black or African American
+    "S2502_C02_011E": "pct_younger_35",  # householder under 35 years
+    "S2502_C02_018E": "pct_less_HS",     # householder less than high school
+    "S2502_C02_021E": "pct_bsc_higher",  # householder bachelor's degree or higher
+}
+COMMUTE = [f"B08303_{i:03d}E" for i in range(1, 14)]  # 001 = total, 002-013 = bins
 
 
-with open(zip_file, "wb") as file:
-    file.write(response.content)
-csv_file_in_zip = "ACSDT5Y2021.B08303-Data.csv"
+def get(url, **kwargs):
+    response = requests.get(url, timeout=120, **kwargs)
+    response.raise_for_status()
+    return response
 
-with zipfile.ZipFile(zip_file, "r") as zip_ref:
-    with zip_ref.open(csv_file_in_zip) as file_in_zip:
-        csv_data = file_in_zip.read()
-commute = pd.read_csv(io.BytesIO(csv_data))
 
-commute.to_csv('Data/raw/Commute.csv')
+def download_zillow():
+    frames = []
+    for n in range(1, 6):
+        df = pd.read_csv(StringIO(get(ZILLOW_URL.format(n=n)).text))
+        df["Bedroom"] = n
+        frames.append(df)
+    return pd.concat(frames, ignore_index=True)
+
+
+def download_cpi():
+    return pd.read_csv(StringIO(get(FRED_URL).text))
+
+
+def download_walkscore():
+    frames = []
+    for state in STATES:
+        html = get(WALKSCORE_URL.format(state=state), headers={"User-Agent": "Mozilla/5.0"}).text
+        for table in pd.read_html(StringIO(html)):
+            if "City" in table.columns and "Walk Score" in table.columns:
+                table["State"] = state
+                frames.append(table)
+    return pd.concat(frames, ignore_index=True)
+
+
+def download_acs(table, variables):
+    """Query one ACS table for all ZCTAs. The API returns a list of rows, header first."""
+    params = {
+        "get": ",".join(["NAME", *variables]),
+        "for": "zip code tabulation area:*",
+    }
+    rows = get(CENSUS_URL.format(table=table), params=params).json()
+    return pd.DataFrame(rows[1:], columns=rows[0])
+
+
+def main():
+    RAW.mkdir(parents=True, exist_ok=True)
+    download_zillow().to_csv(RAW / "Zillow.csv", index=False)
+    download_cpi().to_csv(RAW / "CPI.csv", index=False)
+    download_walkscore().to_csv(RAW / "Walk.csv", index=False)
+    download_acs("/subject", list(DEMOGRAPHICS)).to_csv(RAW / "Census.csv", index=False)
+    download_acs("", COMMUTE).to_csv(RAW / "Commute.csv", index=False)
+
+
+if __name__ == "__main__":
+    main()

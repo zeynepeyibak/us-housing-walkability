@@ -1,127 +1,99 @@
-#import packages
+"""Regressions of home values on walkability, bikeability and commute times.
+
+Unit of observation: zip code x number of bedrooms, in the latest month of the Zillow data.
+Dependent variable: log home value. All models include bedroom fixed effects.
+Walk and bike scores vary at the city level, so standard errors are clustered by city.
+
+Output: Tables/summary_{1,2,3}.tex
+"""
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
-import statsmodels as sm
 import statsmodels.formula.api as smf
-from statsmodels.regression.linear_model import OLS
-from statsmodels.tools.tools import add_constant
 from statsmodels.iolib.summary2 import summary_col
-from linearmodels.panel import PanelOLS
 
-#load data
-data = pd.read_csv('Data/clean/Sample.csv')
+from Data_Preparation import date_columns
 
-#drop unnecessary columns
-columns_to_drop = ['Unnamed: 0.1', 'Unnamed: 0', 'Unnamed: 0_x']
-# Drop the specified columns
-data.drop(columns=columns_to_drop, inplace=True)                   
-
-#change format of data to long
-data = data.melt(id_vars=['SizeRank', 'zip','State', 'City', 'CountyName',
-       'Bedroom', 'Average_2021', 'Average_2022', 'Average_2023',
-       'Growth_2021_to_2022', 'Growth_2022_to_2023', 'Unnamed: 0_y',
-       'Walk Score', 'Transit Score', 'Bike Score', 'pct_younger_35',
-       'pct_black', 'pct_less_HS', 'pct_bsc_higher', 'Short Commute',
-       'Moderate Commute', 'Long Commute'])
-
-#rename columns
-data = data.rename(columns={
-    'variable': 'date',
-    'value': 'price',
-    'Walk Score': 'walk_score',
-    'Bike Score': 'bike_score',
-    'Transit Score': 'transit_score',
-    'Short Commute': 'short_commute',
-    'Long Commute': 'long_commute'})
+TABLES = Path("Tables")
+SCORES = ["walk_score", "bike_score"]
+COMMUTE = ["short_commute", "long_commute"]  # omitted category: 15 to 39 minutes
+DEMOGRAPHICS = ["pct_bsc_higher", "pct_younger_35"]
+ORDER = SCORES + COMMUTE + DEMOGRAPHICS
+LABELS = {
+    "walk\\_score": "Walk Score",
+    "bike\\_score": "Bike Score",
+    "short\\_commute": "Short commute (\\%)",
+    "long\\_commute": "Long commute (\\%)",
+    "pct\\_bsc\\_higher": "Bachelor's or higher (\\%)",
+    "pct\\_younger\\_35": "Householder under 35 (\\%)",
+}
 
 
-#simple regression
-reg1 = smf.ols('price ~ Bedroom', data=data)
-results1 = reg1.fit(cov_type='HC1') 
+def cross_section():
+    data = pd.read_csv("Data/clean/Data.csv", dtype={"zip": str})
+    latest = date_columns(data)[-1]
+    data = data.loc[data[latest] > 0].copy()
+    data["log_price"] = np.log(data[latest])
+    data["city"] = data["City"] + ", " + data["State"]
+    return data
 
 
-reg2 = smf.ols('price ~ Bedroom + walk_score', data=data)
-results2 = reg2.fit(cov_type='HC1') 
-
-reg3 = smf.ols('price ~ Bedroom + walk_score + bike_score', data=data)
-results3 = reg3.fit(cov_type='HC1') 
-
-#create table with results
-info_dict={'R-squared' : lambda x: "{:.2f}".format(x.rsquared),
-           'No. observations' : lambda x: "{0:d}".format(int(x.nobs))}
-
-results_table_1 = summary_col(results=[results1,results2, results3],
-                            float_format='%0.2f',
-                            stars = True,
-                            model_names=['Model 1',
-                                         'Model 2',
-                                         'Model 3'],
-                            info_dict=info_dict,
-                            regressor_order=['Bedroom',
-                                             'walk_score',
-                                             'bike_score',
-                                             'const'])
-
-results_table_1.add_title('Simple OLS Regressions')
+def fit(data, regressors, state_fe=False):
+    """OLS with bedroom (and optionally state) fixed effects, SEs clustered by city."""
+    sample = data.dropna(subset=["log_price", "city", *regressors])
+    fixed_effects = ["C(Bedroom)"] + (["C(State)"] if state_fe else [])
+    formula = "log_price ~ " + " + ".join(regressors + fixed_effects)
+    groups = pd.factorize(sample["city"])[0]
+    result = smf.ols(formula, data=sample).fit(cov_type="cluster", cov_kwds={"groups": groups})
+    result.state_fe = state_fe
+    result.n_clusters = len(set(groups))
+    return result
 
 
-
-with open('Tables/summary_1.tex', 'w') as file_handle:
-    file_handle.write(results_table_1.as_latex())
-
-
-
-#Including additional covariates
-reg4 = smf.ols('price ~ Bedroom + walk_score + bike_score + short_commute', data=data)
-results4 = reg4.fit(cov_type='HC1') 
-
-reg5 = smf.ols('price ~ Bedroom + walk_score + bike_score + short_commute + long_commute', data=data)
-results5 = reg5.fit(cov_type='HC1') 
-
-reg6 = smf.ols('price ~ Bedroom + walk_score + bike_score + short_commute + long_commute + Growth_2022_to_2023', data=data)
-results6 = reg6.fit(cov_type='HC1') 
-
-#create table
-results_table_2 = summary_col(results=[results4,results5, results6],
-                            float_format='%0.2f',
-                            stars = True,
-                            model_names=['Model 4',
-                                         'Model 5',
-                                         'Model 6'],
-                            info_dict=info_dict,
-                            regressor_order=['Bedroom',
-                                             'walk_score',
-                                             'bike_score',
-                                             'short_commute',
-                                             'long_commute',
-                                             'Growth_2022_to_2023',
-                                             'const'])
-
-results_table_2.add_title('Regressions Including Additional Covariates')
+def write_table(results, title, path):
+    info = {
+        "Bedroom FE": lambda r: "Yes",
+        "State FE": lambda r: "Yes" if r.state_fe else "No",
+        "Cities": lambda r: f"{r.n_clusters:,}",
+        "Observations": lambda r: f"{int(r.nobs):,}",
+    }
+    table = summary_col(
+        results,
+        float_format="%0.4f",
+        stars=True,
+        model_names=[f"({i})" for i in range(1, len(results) + 1)],
+        info_dict=info,
+        regressor_order=[v for v in ORDER if any(v in r.params for r in results)],
+        drop_omitted=True,
+    )
+    table.add_title(title)
+    latex = table.as_latex()
+    for name, label in LABELS.items():
+        latex = latex.replace(name, label)
+    path.write_text(latex)
 
 
-with open('Tables/summary_2.tex', 'w') as file_handle:
-    file_handle.write(results_table_2.as_latex())
+def main():
+    TABLES.mkdir(exist_ok=True)
+    data = cross_section()
+
+    write_table(
+        [fit(data, ["walk_score"]), fit(data, ["bike_score"]), fit(data, SCORES)],
+        "Log home value on Walk and Bike Scores",
+        TABLES / "summary_1.tex",
+    )
+    write_table(
+        [fit(data, SCORES + COMMUTE), fit(data, SCORES + COMMUTE + DEMOGRAPHICS)],
+        "Adding commute times and neighbourhood characteristics",
+        TABLES / "summary_2.tex",
+    )
+    write_table(
+        [fit(data, SCORES, state_fe=True), fit(data, SCORES + COMMUTE + DEMOGRAPHICS, state_fe=True)],
+        "Within-state comparisons (state fixed effects)",
+        TABLES / "summary_3.tex",
+    )
 
 
-## Include fixed effects
-## create a year variable
-year = []
-for i in range(0,len(data.date)):
-    x = data.date[i][0:4]
-    year.append(int(x))
-data['Year'] = year
-
-#run FE regression
-data_index = data[['City', 'Year']]
-data_index = pd.MultiIndex.from_frame(data_index)
-data= data.set_index(data_index )
-
-model = PanelOLS(data.price, data[['Bedroom', 'walk_score', 'bike_score']], entity_effects=True)
-
-results = model.fit(cov_type='clustered', cluster_entity=True)
-
-with open('Tables/summary_3.tex', 'w') as file_handle:
-    file_handle.write(results.summary.as_latex().replace("\\toprule", "").replace('\\bottomrule', '').replace('\\midrule', ''))
-
-
+if __name__ == "__main__":
+    main()

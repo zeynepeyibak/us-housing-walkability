@@ -1,137 +1,111 @@
-#Import Packages
+"""Clean the raw data and merge it into one file at the zip code x bedroom level.
+
+- Zillow prices are converted to constant dollars of the latest month in the data (CPI-U).
+- Walk scores are merged on city and state (city names alone are not unique).
+- ACS demographics and commute shares are merged on the 5-digit zip code.
+
+Output: Data/clean/Data.csv
+"""
+from pathlib import Path
+
 import pandas as pd
-import requests
-import io
-from io import StringIO
-import zipfile
-import matplotlib.pyplot as plt
-import seaborn as sns
-import numpy as np
+
+RAW = Path("Data/raw")
+CLEAN = Path("Data/clean")
+
+ZILLOW_ID_COLS = ["zip", "State", "City", "CountyName", "SizeRank", "Bedroom"]
+DEMOGRAPHICS = {
+    "S2502_C02_003E": "pct_black",
+    "S2502_C02_011E": "pct_younger_35",
+    "S2502_C02_018E": "pct_less_HS",
+    "S2502_C02_021E": "pct_bsc_higher",
+}
+COMMUTE_BINS = {
+    "short_commute": ["B08303_002E", "B08303_003E", "B08303_004E"],  # under 15 min
+    "moderate_commute": [f"B08303_{i:03d}E" for i in range(5, 10)],  # 15 to 39 min
+    "long_commute": [f"B08303_{i:03d}E" for i in range(10, 14)],     # 40 min or more
+}
 
 
-# load the data
-house_prices = pd.read_csv('Data/raw/Zillow.csv')
-CPI = pd.read_csv('Data/raw/CPI.csv')
-walk_score = pd.read_csv('Data/raw/Walk.csv')
-demographics = pd.read_csv('Data/raw/Census.csv')
-commute = pd.read_csv('Data/raw/Commute.csv')
-
-### Zillow data
-#Rename RegionName to zip
-house_prices=house_prices.rename(columns={'RegionName': 'zip'})
-#Adjust house prices by yearly inflation
-for col in house_prices.columns:
-    #Extract the first 7 characters of house_prices data frame
-    first7chr = col[:7]
-    #Find the columns from CPI that has the same first 7 ch
-    if first7chr in CPI.columns:
-        #Divide the corresponding house prices column to CPI and multip by 100 to adjust for inflation
-        #house_prices_CPI=house_prices.copy()
-        house_prices[col] = (house_prices[col] / CPI[first7chr].iloc[0]) * 100 
-
-#Understand the missing data
-house_prices['2023-08-31'].isna().sum() #no missing in 2023 august
-house_prices['2023-07-31'].isna().sum()
-house_prices['2023-06-30'].isna().sum()
+def date_columns(df):
+    return [c for c in df.columns if c[:2] in ("19", "20") and len(c) == 10]
 
 
-#Create variables based on past house prices (potentially to be used for regression)
+def zip5(series):
+    """Zip codes as 5-character strings; read as numbers, 02138 would become 2138."""
+    return series.astype(str).str.extract(r"(\d+)", expand=False).str.zfill(5)
 
-##Create yearly average house prices variables
-for year in range(2021, 2024):
-    year_columns = [col for col in house_prices.columns if col.startswith(str(year))]
-    house_prices[f'Average_{year}'] = house_prices[year_columns].mean(axis=1)
-    
-## Growth of house prices
-for year in range(2022, 2024):
-    previous_year = year - 1
-    
-    # Calculate the percentage growth from the previous year to the current year
-    house_prices[f'Growth_{previous_year}_to_{year}'] = (
-        house_prices[f'Average_{year}'] / house_prices[f'Average_{previous_year}'] - 1
+
+def load_cpi():
+    cpi = pd.read_csv(RAW / "CPI.csv")
+    date_col = "observation_date" if "observation_date" in cpi.columns else "DATE"
+    cpi["month"] = pd.to_datetime(cpi[date_col]).dt.strftime("%Y-%m")
+    return cpi.set_index("month")["CPIAUCSL"]
+
+
+def prepare_zillow(cpi):
+    zillow = pd.read_csv(RAW / "Zillow.csv")
+    zillow = zillow.rename(columns={"RegionName": "zip"})
+    zillow["zip"] = zip5(zillow["zip"])
+
+    dates = [d for d in date_columns(zillow) if d[:7] in cpi.index]
+    base = cpi[dates[-1][:7]]  # express all prices in dollars of the latest month
+    for d in dates:
+        zillow[d] = zillow[d] * base / cpi[d[:7]]
+
+    return zillow[ZILLOW_ID_COLS + dates]
+
+
+def prepare_walkscore():
+    walk = pd.read_csv(RAW / "Walk.csv")
+    walk["City"] = walk["City"].str.replace(r"\s*\([^)]*\)", "", regex=True).str.strip()
+    walk = walk.rename(columns={
+        "Walk Score": "walk_score",
+        "Transit Score": "transit_score",
+        "Bike Score": "bike_score",
+    })
+    scores = ["walk_score", "transit_score", "bike_score"]
+    walk = walk[["City", "State"] + [s for s in scores if s in walk.columns]]
+    for s in scores:
+        if s in walk.columns:
+            walk[s] = pd.to_numeric(walk[s], errors="coerce")
+    return walk.drop_duplicates(subset=["City", "State"])
+
+
+def read_acs(name):
+    df = pd.read_csv(RAW / name, dtype=str)
+    df["zip"] = zip5(df["zip code tabulation area"])
+    return df
+
+
+def prepare_demographics():
+    df = read_acs("Census.csv").rename(columns=DEMOGRAPHICS)
+    out = df[["zip", *DEMOGRAPHICS.values()]].copy()
+    for col in DEMOGRAPHICS.values():
+        out[col] = pd.to_numeric(out[col], errors="coerce")
+    return out
+
+
+def prepare_commute():
+    df = read_acs("Commute.csv")
+    counts = df.filter(like="B08303_").apply(pd.to_numeric, errors="coerce")
+    total = counts["B08303_001E"].where(counts["B08303_001E"] > 0)
+    out = pd.DataFrame({"zip": df["zip"]})
+    for name, cols in COMMUTE_BINS.items():
+        out[name] = counts[cols].sum(axis=1) / total * 100
+    return out
+
+
+def main():
+    CLEAN.mkdir(parents=True, exist_ok=True)
+    data = (
+        prepare_zillow(load_cpi())
+        .merge(prepare_walkscore(), on=["City", "State"], how="left", validate="m:1")
+        .merge(prepare_demographics(), on="zip", how="left", validate="m:1")
+        .merge(prepare_commute(), on="zip", how="left", validate="m:1")
     )
+    data.to_csv(CLEAN / "Data.csv", index=False)
 
 
-
-#drop other unnecessary columns
-columns_to_drop = ['RegionID', 'RegionType', 'StateName', 'Metro']
-
-# Drop the specified columns
-house_prices.drop(columns=columns_to_drop, inplace=True)
-
-
-### Walk Index
-##Get rid of the extra info with () at the end of some cities 
-walk_score['City'] = walk_score['City'].str.replace(r'\s*\([^)]*\)', '', regex=True)
-
-## Drop unnecessary variables:
-walk_score = walk_score.drop(columns=['Population', 'Zip Code'])
-
-#Merge Walk Index to Zillow
-house_prices = pd.merge(house_prices, walk_score, on=['City'], how='left')
-
-
-###Census Data
-#Organize the data
-demographics = demographics.drop(0).reset_index(drop=True)
-demographics = demographics.rename(columns={'NAME': 'zip'})
-
-demographics = demographics[["S2502_C02_011E", "S2502_C02_003E", "S2502_C02_018E", "S2502_C02_021E", "zip"]]
-demographics['zip'] = demographics['zip'].str[6:]
-
-demographics = demographics.rename(columns={
-    'S2502_C02_011E': 'pct_younger_35',
-    'S2502_C02_003E': 'pct_black',
-    'S2502_C02_018E': 'pct_less_HS',
-    'S2502_C02_021E': 'pct_bsc_higher'})
-
-#Join the demographics data into house prices data
-house_prices['zip'] = house_prices['zip'].astype(str)
-demographics['zip'] = demographics['zip'].astype(str)
-
-house_prices= pd.merge(house_prices, demographics, on='zip', how='left')
-
-## Commute data
-#Organize the data
-commute = commute.drop(0).reset_index(drop=True)
-commute = commute.rename(columns={'NAME': 'zip'})
-commute['zip'] = commute['zip'].str[6:]
-
-# Rename the columns to remove special characters
-commute.rename(columns={
-    'B08303_003E': 'Less than 5 min',
-    'B08303_004E': '5 to 9 min',
-    'B08303_005E': '10 to 14 min',
-    'B08303_006E': '15 to 19 min',
-    'B08303_007E': '20 to 24 min',
-    'B08303_008E': '25 to 29 min',
-    'B08303_009E': '30 to 34 min',
-    'B08303_010E': '35 to 39 min',
-    'B08303_011E': '40 to 44 min',
-    'B08303_012E': '45 to 59 min',
-    'B08303_013E': '60 to 89 min'
-}, inplace=True)
-
-relevant_columns=['Less than 5 min', '5 to 9 min', '10 to 14 min', '15 to 19 min',
-                    '20 to 24 min', '25 to 29 min', '30 to 34 min', '35 to 39 min',
-                    '40 to 44 min', '45 to 59 min', '60 to 89 min']
-commute=commute[['zip'] + relevant_columns]
-
-commute['Total'] = commute[relevant_columns].sum(axis=1)
-commute['Total'].replace(0, np.nan, inplace=True)
-
-for col in relevant_columns:
-    commute[col] = pd.to_numeric(commute[col], errors='coerce')
-    
-commute['Total'].replace(0, np.nan, inplace=True)
-commute['Total'] = pd.to_numeric(commute['Total'], errors='coerce')
-commute['Short Commute'] = (commute['Less than 5 min'] + commute['5 to 9 min'] + commute['10 to 14 min']) / commute['Total'] * 100
-commute['Moderate Commute'] = (commute['15 to 19 min'] + commute['20 to 24 min'] + commute['25 to 29 min'] + commute['30 to 34 min'] + commute['35 to 39 min']) / commute['Total'] * 100
-commute['Long Commute'] = (commute['45 to 59 min'] + commute['60 to 89 min'] + commute['40 to 44 min']) / commute['Total'] * 100
-
-commute=commute[['Short Commute', 'Moderate Commute', 'Long Commute', 'zip']]
-
-house_prices= pd.merge(house_prices, commute, on='zip', how='left')
-
-##save the clean data
-house_prices.to_csv('Data/clean/Data.csv')
+if __name__ == "__main__":
+    main()
