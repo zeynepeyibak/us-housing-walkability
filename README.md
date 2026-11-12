@@ -20,15 +20,15 @@ We estimate how walkability, bikeability and commute times relate to house price
 
 ## Results
 
-One observation per zip code and number of bedrooms, September 2026 (26,022 observations in 2,174 cities with a Walk Score). Dependent variable: log home value. Standard errors clustered by city.
+One observation per zip code and number of bedrooms, September 2026 (26,022 observations in 2,174 cities with a Walk Score). Dependent variable: log home value. All models control for Bike Score and number of bedrooms. Standard errors clustered by city.
 
 | | Walk Score coefficient | 10 more points ≈ |
 |---|---|---|
-| Bedroom fixed effects only | 0.0135 (0.0019) | +14.5% |
+| Bedroom fixed effects | 0.0092 (0.0024) | +9.6% |
 | + state fixed effects | 0.0046 (0.0018) | +4.7% |
 | + state FE, commute times, education and age of householders | 0.0074 (0.0010) | +7.7% |
 
-Homes in more walkable cities are worth more, also when comparing cities within the same state with similar commute times and residents. Comparing within states alone removes about two thirds of the raw gap. These are associations, not causal effects: Walk Score is measured at the city level and is correlated with other city amenities.
+Homes in more walkable cities are worth more, also when comparing cities within the same state with similar commute times and residents. Comparing within states alone halves the estimate. These are associations, not causal effects: Walk Score is measured at the city level and is correlated with other city amenities.
 
 ![Walk Score and home values](Plots/Walk_Price.png)
 
